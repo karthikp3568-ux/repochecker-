@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (next-themes toggles `.dark` on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens (spec §11.1): zinc neutrals, one indigo accent, semantic colors,
+ * and a 5-step score scale. Always pair score colors with a number + label.
+ */
+:root {
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0.006 285.885);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.442 0.017 285.786);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.87 0.006 286.286);
+  --ring: oklch(0.511 0.262 276.966);
+
+  --accent: oklch(0.511 0.262 276.966); /* indigo-600 */
+  --accent-foreground: oklch(0.985 0 0);
+  --accent-subtle: oklch(0.962 0.018 272.314);
+
+  --success: oklch(0.448 0.119 151.328);
+  --warning: oklch(0.476 0.114 61.907);
+  --danger: oklch(0.505 0.213 27.518);
+  --info: oklch(0.488 0.243 264.376);
+
+  --score-1: oklch(0.505 0.213 27.518);
+  --score-2: oklch(0.553 0.195 38.402);
+  --score-3: oklch(0.555 0.163 48.998);
+  --score-4: oklch(0.511 0.096 186.391);
+  --score-5: oklch(0.448 0.119 151.328);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.967 0.001 286.375);
+  --card: oklch(0.18 0.006 285.885);
+  --card-foreground: var(--foreground);
+  --muted: oklch(0.21 0.006 285.885);
+  --muted-foreground: oklch(0.72 0.015 286.067);
+  --border: oklch(0.274 0.006 286.033);
+  --input: oklch(0.37 0.013 285.805);
+  --ring: oklch(0.673 0.182 276.935);
+
+  --accent: oklch(0.673 0.182 276.935); /* indigo-400 */
+  --accent-foreground: oklch(0.141 0.005 285.823);
+  --accent-subtle: oklch(0.257 0.09 281.288);
+
+  --success: oklch(0.723 0.219 149.579);
+  --warning: oklch(0.769 0.188 70.08);
+  --danger: oklch(0.704 0.191 22.216);
+  --info: oklch(0.707 0.165 254.624);
+
+  --score-1: oklch(0.704 0.191 22.216);
+  --score-2: oklch(0.75 0.183 55.934);
+  --score-3: oklch(0.828 0.189 84.429);
+  --score-4: oklch(0.777 0.152 181.912);
+  --score-5: oklch(0.723 0.219 149.579);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-score-1: var(--score-1);
+  --color-score-2: var(--score-2);
+  --color-score-3: var(--score-3);
+  --color-score-4: var(--score-4);
+  --color-score-5: var(--score-5);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Type scale 12/14/16/20/24/32/48 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 3rem;
+
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes slidein {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Shiki dual-theme code snippets with a line-number gutter (report evidence). */
+.code-snippet pre.shiki {
+  margin: 0;
+  padding: 0.5rem 0;
+  overflow-x: auto;
+  background-color: var(--shiki-light-bg);
+  font-family: var(--font-mono);
+  line-height: 1.55;
+}
+.code-snippet .shiki span {
+  color: var(--shiki-light);
+}
+.dark .code-snippet pre.shiki {
+  background-color: var(--shiki-dark-bg);
+}
+.dark .code-snippet .shiki span {
+  color: var(--shiki-dark);
+}
+.code-snippet .line {
+  display: inline-block;
+  min-width: 100%;
+  padding-right: 1rem;
+}
+.code-snippet .line::before {
+  content: attr(data-line);
+  display: inline-block;
+  width: 3.5rem;
+  padding-right: 1rem;
+  text-align: right;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+.code-snippet .line.hl {
+  /* Marker bar only: a tint would push github-light token colors below AA. */
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  details > summary {
+    list-style: none;
+  }
+  section,
+  figure,
+  details {
+    break-inside: avoid;
+  }
+  a[href]::after {
+    content: none;
+  }
+}

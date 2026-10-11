@@ -1,0 +1,1 @@
+{ "name": "notehub", "version": "0.0.1", "main": "app/server.js", "scripts": { "start": "node app/server.js" } }

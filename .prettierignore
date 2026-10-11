@@ -1,0 +1,13 @@
+node_modules
+.next
+src/generated
+.data
+fixtures
+pnpm-lock.yaml
+*.md
+
+.data
+test-results
+playwright-report
+docs
+fixtures

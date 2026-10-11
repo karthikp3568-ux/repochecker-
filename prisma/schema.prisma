@@ -1,0 +1,506 @@
+// RepoJudge data model — see REPOJUDGE_SPEC.md §10.
+// Auth.js adapter tables (Account, Session, VerificationToken) are added on top of the spec's User.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Auth ─────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+
+  accounts          Account[]
+  sessions          Session[]
+  githubConnections GithubConnection[]
+  evaluations       Evaluation[]       @relation("EvaluationOwner")
+  memberships       EvaluationMember[]
+  templates         RubricTemplate[]
+  lockedRubrics     RubricVersion[]
+  overrides         ScoreOverride[]
+  humanScores       HumanScore[]
+  comments          Comment[]
+  approvedReports   Report[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model GithubConnection {
+  id             String   @id @default(cuid())
+  userId         String
+  encryptedToken String
+  scopes         String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ───────────────────────── Evaluations & rubrics ─────────────────────────
+
+enum EvaluationStatus {
+  draft
+  rubric_ready
+  running
+  completed
+  archived
+}
+
+enum MemberRole {
+  owner
+  judge
+  viewer
+}
+
+model Evaluation {
+  id                    String           @id @default(cuid())
+  ownerId               String
+  name                  String
+  purpose               String
+  context               Json
+  settings              Json
+  status                EvaluationStatus @default(draft)
+  activeRubricVersionId String?          @unique
+  deadline              DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  owner               User               @relation("EvaluationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  activeRubricVersion RubricVersion?     @relation("ActiveRubric", fields: [activeRubricVersionId], references: [id])
+  members             EvaluationMember[]
+  rubricDraft         RubricDraft?
+  rubricVersions      RubricVersion[]    @relation("EvaluationRubrics")
+  submissions         Submission[]
+
+  @@index([ownerId])
+}
+
+model EvaluationMember {
+  evaluationId String
+  userId       String
+  role         MemberRole
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([evaluationId, userId])
+  @@index([userId])
+}
+
+/// Working copy of the rubric while the user is still editing (one per evaluation).
+model RubricDraft {
+  id           String   @id @default(cuid())
+  evaluationId String   @unique
+  intent       String   @db.Text
+  attachments  Json
+  questions    Json?
+  answers      Json?
+  rubric       Json
+  updatedAt    DateTime @updatedAt
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+}
+
+/// Immutable once created.
+model RubricVersion {
+  id             String   @id @default(cuid())
+  evaluationId   String
+  version        Int
+  intent         String   @db.Text
+  clarifications Json
+  rubric         Json
+  lockedAt       DateTime @default(now())
+  lockedById     String
+
+  evaluation   Evaluation  @relation("EvaluationRubrics", fields: [evaluationId], references: [id], onDelete: Cascade)
+  activeFor    Evaluation? @relation("ActiveRubric")
+  lockedBy     User        @relation(fields: [lockedById], references: [id])
+  runs         Run[]
+  reports      Report[]
+
+  @@unique([evaluationId, version])
+}
+
+model RubricTemplate {
+  id          String   @id @default(cuid())
+  ownerId     String
+  name        String
+  description String
+  rubric      Json
+  createdAt   DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+// ───────────────────────── Submissions & runs ─────────────────────────
+
+enum SourceType {
+  github
+  git
+  zip
+}
+
+model Submission {
+  id           String     @id @default(cuid())
+  evaluationId String
+  displayName  String
+  teamName     String?
+  sourceType   SourceType
+  repoUrl      String?
+  branch       String?
+  commitSha    String
+  zipKey       String?
+  metadata     Json
+  createdAt    DateTime   @default(now())
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  runs       Run[]
+  reports    Report[]
+
+  @@index([evaluationId])
+}
+
+model RepoSnapshot {
+  id         String   @id @default(cuid())
+  commitSha  String
+  sourceKey  String
+  storageKey String
+  facts      Json
+  createdAt  DateTime @default(now())
+
+  runs Run[]
+
+  @@unique([sourceKey, commitSha])
+}
+
+enum RunStatus {
+  QUEUED
+  FETCHING
+  INDEXING
+  EXECUTING
+  GRADING
+  VERIFYING
+  SCORING
+  COMPLETED
+  NEEDS_REVIEW
+  FAILED
+  CANCELLED
+}
+
+model Run {
+  id              String    @id @default(cuid())
+  submissionId    String
+  rubricVersionId String
+  snapshotId      String?
+  status          RunStatus @default(QUEUED)
+  statusReason    String?
+  attempt         Int       @default(1)
+  consensusIndex  Int       @default(0)
+  /// Runs started together for one submission (consensus passes share a group).
+  groupId         String?
+  /// finish() output, verifier result and nudge/budget notes.
+  result          Json?
+  /// Last fully completed pipeline stage (retries resume after it).
+  completedStage  String?
+  depth           String
+  model           String
+  tokensIn        Int       @default(0)
+  tokensOut       Int       @default(0)
+  cacheRead       Int       @default(0)
+  cacheWrite      Int       @default(0)
+  costUsd         Decimal   @default(0) @db.Decimal(12, 6)
+  toolCalls       Int       @default(0)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  submission       Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rubricVersion    RubricVersion     @relation(fields: [rubricVersionId], references: [id])
+  snapshot         RepoSnapshot?     @relation(fields: [snapshotId], references: [id])
+  events           RunEvent[]
+  executionResults ExecutionResult[]
+  fileAccesses     FileAccess[]
+  criterionScores  CriterionScore[]
+  integrityFlags   IntegrityFlag[]
+
+  @@index([submissionId])
+  @@index([status])
+  @@index([groupId])
+}
+
+enum RunEventType {
+  stage
+  tool
+  note
+  warning
+  error
+}
+
+model RunEvent {
+  id      String       @id @default(cuid())
+  runId   String
+  ts      DateTime     @default(now())
+  type    RunEventType
+  label   String
+  payload Json
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, ts])
+}
+
+model ExecutionResult {
+  id         String @id @default(cuid())
+  runId      String
+  phase      String
+  command    String
+  exitCode   Int
+  durationMs Int
+  stdoutTail String @db.Text
+  stderrTail String @db.Text
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+enum FileAccessKind {
+  read
+  search
+}
+
+/// Coverage source of truth — written by the harness, never by the model.
+model FileAccess {
+  id        String         @id @default(cuid())
+  runId     String
+  path      String
+  startLine Int?
+  endLine   Int?
+  kind      FileAccessKind
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+enum CriterionScoreStatus {
+  scored
+  insufficient_evidence
+  gate_pass
+  gate_fail
+}
+
+enum Confidence {
+  high
+  medium
+  low
+}
+
+model CriterionScore {
+  id          String               @id @default(cuid())
+  runId       String
+  criterionId String
+  status      CriterionScoreStatus
+  score       Float?
+  confidence  Confidence
+  rationale   String               @db.Text
+  improvement String               @db.Text
+  verifier    Json?
+
+  run      Run        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  evidence Evidence[]
+
+  @@unique([runId, criterionId])
+}
+
+enum EvidenceKind {
+  strength
+  issue
+}
+
+enum EvidenceSeverity {
+  critical
+  major
+  minor
+}
+
+model Evidence {
+  id               String            @id @default(cuid())
+  criterionScoreId String
+  path             String
+  startLine        Int
+  endLine          Int
+  quote            String            @db.Text
+  kind             EvidenceKind
+  severity         EvidenceSeverity?
+  verified         Boolean           @default(false)
+  verifyReason     String?
+
+  criterionScore CriterionScore @relation(fields: [criterionScoreId], references: [id], onDelete: Cascade)
+
+  @@index([criterionScoreId])
+}
+
+enum FlagSeverity {
+  critical
+  high
+  medium
+  low
+}
+
+enum FlagSource {
+  agent
+  scanner
+}
+
+model IntegrityFlag {
+  id          String       @id @default(cuid())
+  runId       String
+  severity    FlagSeverity
+  category    String
+  path        String?
+  line        Int?
+  description String       @db.Text
+  source      FlagSource
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+// ───────────────────────── Reports & review ─────────────────────────
+
+enum ReportStatus {
+  draft
+  needs_review
+  approved
+  disqualified
+}
+
+model Report {
+  id              String       @id @default(cuid())
+  submissionId    String
+  rubricVersionId String
+  runIds          String[]
+  status          ReportStatus @default(draft)
+  aiOverall       Float?
+  finalOverall    Float?
+  percent         Float?
+  letter          String?
+  summary         String       @db.Text
+  recommendations Json
+  /// Merged per-criterion AI results (consensus median, confidence, spread, verifier verdict).
+  criteria        Json?
+  coverage        Json
+  warnings        Json
+  approvedById    String?
+  approvedAt      DateTime?
+  shareToken      String?      @unique
+  shareOptions    Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  submission    Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rubricVersion RubricVersion   @relation(fields: [rubricVersionId], references: [id])
+  approvedBy    User?           @relation(fields: [approvedById], references: [id])
+  overrides     ScoreOverride[]
+  humanScores   HumanScore[]
+  comments      Comment[]
+
+  @@unique([submissionId, rubricVersionId])
+}
+
+/// Audit trail: rows are never updated or deleted.
+model ScoreOverride {
+  id          String   @id @default(cuid())
+  reportId    String
+  criterionId String
+  aiScore     Float?
+  newScore    Float
+  reason      String   @db.Text
+  userId      String
+  createdAt   DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+}
+
+model HumanScore {
+  id          String   @id @default(cuid())
+  reportId    String
+  criterionId String
+  score       Float
+  note        String?
+  userId      String
+  createdAt   DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  reportId    String
+  criterionId String?
+  userId      String
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+}

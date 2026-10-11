@@ -1,0 +1,1 @@
+{ "name": "payments-api", "version": "1.0.0", "main": "server/index.js", "dependencies": { "express": "^4.19.0" } }

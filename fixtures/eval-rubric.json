@@ -1,0 +1,84 @@
+{
+  "scale": { "min": 0, "max": 10 },
+  "gradeBands": [
+    { "letter": "A", "minPercent": 85 },
+    { "letter": "B", "minPercent": 70 },
+    { "letter": "C", "minPercent": 55 },
+    { "letter": "D", "minPercent": 40 },
+    { "letter": "F", "minPercent": 0 }
+  ],
+  "summary": "Fixed test rubric for the RepoJudge eval suite (fixtures/repos). Not a product default.",
+  "warnings": [],
+  "criteria": [
+    {
+      "id": "crit_eval_func", "name": "Functionality", "description": "The code does what the README and entry points say it does, without obviously broken paths.",
+      "lookFor": ["Entry point wires up the advertised features", "Core functions implement real logic, not stubs", "Error cases are handled"],
+      "boundary": "Code style and tests are judged elsewhere.",
+      "anchors": [
+        { "band": "0-2", "description": "Stubs or broken; advertised behaviour missing" },
+        { "band": "2-4", "description": "Some behaviour works; major gaps" },
+        { "band": "4-6", "description": "Main path works; secondary paths missing" },
+        { "band": "6-8", "description": "Works as described with minor gaps" },
+        { "band": "8-10", "description": "Fully implements what it claims, robustly" }
+      ],
+      "weight": 30, "weightReasoning": "Eval fixture", "type": "scored", "gateConfig": null, "bonusMax": null,
+      "scorer": "ai", "assessability": "partial", "assessabilityNote": "Static reading only", "suggested": false, "suggestionReason": null
+    },
+    {
+      "id": "crit_eval_quality", "name": "Code Quality", "description": "Readable, well-structured code: small functions, no duplication, clear names.",
+      "lookFor": ["Function length and nesting depth", "Duplicated blocks", "Naming and module structure"],
+      "boundary": null,
+      "anchors": [
+        { "band": "0-2", "description": "Unreadable; heavy duplication" },
+        { "band": "2-4", "description": "Long functions, duplication, unclear names" },
+        { "band": "4-6", "description": "Mixed; some structure" },
+        { "band": "6-8", "description": "Clean with minor issues" },
+        { "band": "8-10", "description": "Exemplary structure and clarity" }
+      ],
+      "weight": 25, "weightReasoning": "Eval fixture", "type": "scored", "gateConfig": null, "bonusMax": null,
+      "scorer": "ai", "assessability": "static", "assessabilityNote": null, "suggested": false, "suggestionReason": null
+    },
+    {
+      "id": "crit_eval_tests", "name": "Testing", "description": "Meaningful automated tests exercise the core logic.",
+      "lookFor": ["Test files exist", "Assertions on real behaviour", "Edge cases covered"],
+      "boundary": null,
+      "anchors": [
+        { "band": "0-2", "description": "No tests" },
+        { "band": "2-4", "description": "Trivial or placeholder tests" },
+        { "band": "4-6", "description": "Some core logic tested" },
+        { "band": "6-8", "description": "Core logic well tested" },
+        { "band": "8-10", "description": "Thorough tests incl. edge cases" }
+      ],
+      "weight": 15, "weightReasoning": "Eval fixture", "type": "scored", "gateConfig": null, "bonusMax": null,
+      "scorer": "ai", "assessability": "static", "assessabilityNote": null, "suggested": false, "suggestionReason": null
+    },
+    {
+      "id": "crit_eval_security", "name": "Security", "description": "No committed secrets; inputs handled safely.",
+      "lookFor": ["Hardcoded keys or committed .env files", "Unsafe input handling", "Secrets loaded from the environment"],
+      "boundary": null,
+      "anchors": [
+        { "band": "0-2", "description": "Live secrets committed" },
+        { "band": "2-4", "description": "Serious issues" },
+        { "band": "4-6", "description": "Some risky patterns" },
+        { "band": "6-8", "description": "Generally safe" },
+        { "band": "8-10", "description": "Careful, secure handling throughout" }
+      ],
+      "weight": 15, "weightReasoning": "Eval fixture", "type": "scored", "gateConfig": null, "bonusMax": null,
+      "scorer": "ai", "assessability": "static", "assessabilityNote": null, "suggested": false, "suggestionReason": null
+    },
+    {
+      "id": "crit_eval_integrity", "name": "Integrity", "description": "Honest work: results are computed, README claims are true, no attempts to manipulate graders.",
+      "lookFor": ["Hardcoded or faked results", "README claims backed by code", "Text addressed to AI graders"],
+      "boundary": null,
+      "anchors": [
+        { "band": "0-2", "description": "Deliberately misleading" },
+        { "band": "2-4", "description": "Significant false claims or faked output" },
+        { "band": "4-6", "description": "Some overstated claims" },
+        { "band": "6-8", "description": "Honest with minor overstatement" },
+        { "band": "8-10", "description": "Fully honest and verifiable" }
+      ],
+      "weight": 15, "weightReasoning": "Eval fixture", "type": "scored", "gateConfig": null, "bonusMax": null,
+      "scorer": "ai", "assessability": "static", "assessabilityNote": null, "suggested": false, "suggestionReason": null
+    }
+  ]
+}
